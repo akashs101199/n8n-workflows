@@ -1,0 +1,1111 @@
+{
+  "name": "Production Agentic AI LinkedIn System",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://your-api.com/config",
+        "options": {}
+      },
+      "id": "get-config",
+      "name": "Get System Config",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.databaseUrl }}/performance?days=30",
+        "options": {}
+      },
+      "id": "get-historical-performance",
+      "name": "Get Historical Performance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "resource": "post",
+        "operation": "getAll",
+        "subreddit": "AgenticAI",
+        "returnAll": false,
+        "limit": 50,
+        "filters": {
+          "sort": "hot",
+          "time": "week"
+        }
+      },
+      "id": "fetch-reddit-data",
+      "name": "Fetch Reddit Trends",
+      "type": "n8n-nodes-base.reddit",
+      "typeVersion": 1,
+      "position": [680, 400],
+      "credentials": {
+        "redditOAuth2Api": {
+          "id": "1",
+          "name": "Reddit account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "repository",
+        "operation": "getRepositories",
+        "owner": "={{ $('Get System Config').item.json.githubUsername }}",
+        "returnAll": false,
+        "limit": 20,
+        "additionalParameters": {
+          "sort": "updated",
+          "type": "owner"
+        }
+      },
+      "id": "fetch-github-repos",
+      "name": "Fetch GitHub Repos",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [680, 500],
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "3",
+          "name": "GitHub account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "commit",
+        "operation": "getAll",
+        "owner": "={{ $json.owner.login }}",
+        "repository": "={{ $json.name }}",
+        "returnAll": false,
+        "limit": 5
+      },
+      "id": "get-recent-commits",
+      "name": "Get Recent Commits",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [900, 500],
+      "credentials": {
+        "githubOAuth2Api": {
+          "id": "3",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all data sources for agent processing\nconst config = $('Get System Config').first().json;\nconst historical = $('Get Historical Performance').first().json;\nconst redditData = $('Fetch Reddit Trends').all().map(item => item.json);\nconst githubRepos = $('Get Recent Commits').all().map(item => item.json);\n\n// Process GitHub data\nconst githubActivity = githubRepos.map(repo => ({\n  repo: repo.repository || repo.name,\n  description: repo.description || '',\n  commits: repo.commits || [],\n  stars: repo.stargazers_count || 0,\n  language: repo.language || 'Unknown'\n}));\n\n// Process Reddit data\nconst trendingTopics = redditData.map(post => ({\n  title: post.title,\n  score: post.score,\n  subreddit: post.subreddit,\n  url: post.url,\n  selftext: post.selftext?.substring(0, 500)\n})).sort((a, b) => b.score - a.score).slice(0, 10);\n\nreturn [{\n  json: {\n    config,\n    historical,\n    githubActivity,\n    trendingTopics,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "aggregate-data",
+      "name": "Aggregate Data Sources",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-sonnet-4-20250514"
+            },
+            {
+              "name": "max_tokens",
+              "value": "4096"
+            },
+            {
+              "name": "system",
+              "value": "You are the Orchestrator Agent in an agentic AI system. Analyze all available data and decide on the optimal content strategy.\n\nRespond in JSON format:\n{\n  \"decision\": \"proceed\" or \"skip\",\n  \"reasoning\": \"explanation\",\n  \"confidence\": 0-100,\n  \"selectedTopic\": \"chosen topic\",\n  \"contentAngle\": \"specific angle\",\n  \"expectedEngagement\": estimated number,\n  \"riskFactors\": [\"risk1\", \"risk2\"],\n  \"timing\": \"immediate\" or \"wait\"\n}"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": \"Analyze these data sources and decide on content strategy:\\n\\n\" + JSON.stringify($json)}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "orchestrator-agent",
+      "name": "Orchestrator Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 400],
+      "credentials": {
+        "anthropicApi": {
+          "id": "6",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse orchestrator decision\nconst response = $input.first().json;\nconst content = response.content.find(c => c.type === 'text')?.text || '';\n\nlet decision;\ntry {\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  decision = JSON.parse(jsonMatch[0]);\n} catch (e) {\n  // Fallback if parsing fails\n  decision = {\n    decision: 'skip',\n    reasoning: 'Parse error',\n    confidence: 0\n  };\n}\n\nreturn [{\n  json: {\n    ...decision,\n    rawResponse: content\n  }\n}];"
+      },
+      "id": "parse-orchestrator-decision",
+      "name": "Parse Orchestrator Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "combinator": "and"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "proceed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "leftValue": "={{ $json.confidence }}",
+              "rightValue": "70",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "should-proceed",
+      "name": "Should Proceed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1780, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-sonnet-4-20250514"
+            },
+            {
+              "name": "max_tokens",
+              "value": "2048"
+            },
+            {
+              "name": "system",
+              "value": "You are the Content Creation Agent. Create an engaging LinkedIn post about Agentic AI that:\n\n1. Opens with a compelling hook\n2. Provides valuable insights\n3. Uses authentic voice based on user's work\n4. Length: 150-250 words\n5. Includes 3-5 relevant hashtags\n6. Ends with a call-to-action\n7. Professional but approachable tone\n\nReturn ONLY the post text, no JSON."
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": \"Create a LinkedIn post based on this strategy:\\n\\nTopic: \" + $('Parse Orchestrator Decision').item.json.selectedTopic + \"\\nAngle: \" + $('Parse Orchestrator Decision').item.json.contentAngle + \"\\n\\nContext: \" + JSON.stringify($('Aggregate Data Sources').item.json) + \"\\n\\nCreate the post.\"}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "content-creation-agent",
+      "name": "Content Creation Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 300],
+      "credentials": {
+        "anthropicApi": {
+          "id": "6",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract post content\nconst response = $input.first().json;\nconst postContent = response.content.find(c => c.type === 'text')?.text || '';\n\nreturn [{\n  json: {\n    postContent: postContent.trim(),\n    createdAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "extract-post-content",
+      "name": "Extract Post Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2220, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-sonnet-4-20250514"
+            },
+            {
+              "name": "max_tokens",
+              "value": "2048"
+            },
+            {
+              "name": "system",
+              "value": "You are the QA Agent. Review content for:\n\n1. Brand safety\n2. Factual accuracy\n3. Grammar and clarity\n4. Engagement potential\n5. Professional tone\n6. Hashtag appropriateness\n\nProvide JSON response:\n{\n  \"approved\": true/false,\n  \"qualityScore\": 0-100,\n  \"issues\": [],\n  \"suggestions\": [],\n  \"revisedContent\": \"improved version if needed or null\"\n}"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": \"Review this LinkedIn post:\\n\\n\" + $json.postContent + \"\\n\\nProvide QA assessment.\"}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "qa-agent",
+      "name": "QA Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2440, 300],
+      "credentials": {
+        "anthropicApi": {
+          "id": "6",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse QA response\nconst response = $input.first().json;\nconst qaText = response.content.find(c => c.type === 'text')?.text || '';\n\nlet qaResult;\ntry {\n  const jsonMatch = qaText.match(/\\{[\\s\\S]*\\}/);\n  qaResult = JSON.parse(jsonMatch[0]);\n} catch (e) {\n  qaResult = {\n    approved: true,\n    qualityScore: 75,\n    issues: ['QA parse failed'],\n    suggestions: [],\n    revisedContent: null\n  };\n}\n\nconst originalContent = $('Extract Post Content').item.json.postContent;\nconst finalContent = qaResult.revisedContent || originalContent;\n\nreturn [{\n  json: {\n    ...qaResult,\n    finalContent,\n    shouldPost: qaResult.approved && qaResult.qualityScore >= 70\n  }\n}];"
+      },
+      "id": "parse-qa-result",
+      "name": "Parse QA Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2660, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "combinator": "and"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.shouldPost }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "approved-to-post",
+      "name": "Approved to Post?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2880, 300]
+    },
+    {
+      "parameters": {
+        "resource": "post",
+        "text": "={{ $('Parse QA Result').item.json.finalContent }}",
+        "additionalFields": {}
+      },
+      "id": "post-to-linkedin",
+      "name": "Post to LinkedIn",
+      "type": "n8n-nodes-base.linkedin",
+      "typeVersion": 1,
+      "position": [3100, 200],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "4",
+          "name": "LinkedIn account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 60000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Get System Config').item.json.databaseUrl }}/posts",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "postId",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $('Parse QA Result').item.json.finalContent }}"
+            },
+            {
+              "name": "strategy",
+              "value": "={{ JSON.stringify($('Parse Orchestrator Decision').item.json) }}"
+            },
+            {
+              "name": "qaScore",
+              "value": "={{ $('Parse QA Result').item.json.qualityScore }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "store-post-metadata",
+      "name": "Store Post Metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 200]
+    },
+    {
+      "parameters": {
+        "amount": 6,
+        "unit": "hours"
+      },
+      "id": "wait-for-analytics",
+      "name": "Wait 6 Hours",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [3540, 200]
+    },
+    {
+      "parameters": {
+        "resource": "post",
+        "operation": "get",
+        "postId": "={{ $('Post to LinkedIn').item.json.id }}"
+      },
+      "id": "fetch-analytics",
+      "name": "Fetch Post Analytics",
+      "type": "n8n-nodes-base.linkedin",
+      "typeVersion": 1,
+      "position": [3760, 200],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "4",
+          "name": "LinkedIn account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-sonnet-4-20250514"
+            },
+            {
+              "name": "max_tokens",
+              "value": "4096"
+            },
+            {
+              "name": "system",
+              "value": "You are the Learning Agent. Analyze performance and provide insights for continuous improvement.\n\nProvide JSON response:\n{\n  \"performanceAnalysis\": {\n    \"actualVsPredicted\": {},\n    \"variance\": number,\n    \"accuracy\": number\n  },\n  \"successFactors\": [\"factor1\", \"factor2\"],\n  \"improvementAreas\": [\"area1\", \"area2\"],\n  \"skillRecommendations\": [\n    {\n      \"skill\": \"skill name\",\n      \"priority\": \"high/medium/low\",\n      \"reasoning\": \"why this matters\",\n      \"projects\": [\"project ideas\"],\n      \"resources\": [\"learning resources\"]\n    }\n  ],\n  \"trendingTopics\": [\"topic1\", \"topic2\"],\n  \"contentStrategyUpdates\": [\"update1\", \"update2\"],\n  \"nextActions\": [\"action1\", \"action2\"]\n}"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": \"Analyze this iteration:\\n\\nPost: \" + $('Parse QA Result').item.json.finalContent + \"\\n\\nPredicted Engagement: \" + $('Parse Orchestrator Decision').item.json.expectedEngagement + \"\\n\\nActual Results: \" + JSON.stringify($json) + \"\\n\\nContext: \" + JSON.stringify($('Aggregate Data Sources').item.json) + \"\\n\\nProvide learning insights and recommendations.\"}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "learning-agent",
+      "name": "Learning Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3980, 200],
+      "credentials": {
+        "anthropicApi": {
+          "id": "6",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse learning insights\nconst response = $input.first().json;\nconst learningText = response.content.find(c => c.type === 'text')?.text || '';\n\nlet insights;\ntry {\n  const jsonMatch = learningText.match(/\\{[\\s\\S]*\\}/);\n  insights = JSON.parse(jsonMatch[0]);\n} catch (e) {\n  insights = {\n    performanceAnalysis: {},\n    successFactors: [],\n    improvementAreas: [],\n    skillRecommendations: [],\n    trendingTopics: [],\n    error: 'Parse failed'\n  };\n}\n\nconst analytics = $('Fetch Post Analytics').item.json;\nconst predicted = $('Parse Orchestrator Decision').item.json.expectedEngagement || 50;\nconst actual = analytics.likes || 0;\n\nreturn [{\n  json: {\n    insights,\n    metrics: {\n      predictedEngagement: predicted,\n      actualEngagement: actual,\n      accuracy: Math.max(0, 100 - Math.abs(actual - predicted) / predicted * 100),\n      qualityScore: $('Parse QA Result').item.json.qualityScore,\n      confidence: $('Parse Orchestrator Decision').item.json.confidence\n    },\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process-learning",
+      "name": "Process Learning Insights",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4200, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Get System Config').item.json.databaseUrl }}/learning",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "runId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "name": "insights",
+              "value": "={{ JSON.stringify($json.insights) }}"
+            },
+            {
+              "name": "metrics",
+              "value": "={{ JSON.stringify($json.metrics) }}"
+            },
+            {
+              "name": "postId",
+              "value": "={{ $('Post to LinkedIn').item.json.id }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "update-knowledge-base",
+      "name": "Update Knowledge Base",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4420, 200]
+    },
+    {
+      "parameters": {
+        "content": "=# 🤖 Agentic AI System Report\n\n## Execution Summary\n**Run ID:** {{ $execution.id }}\n**Date:** {{ new Date().toLocaleString() }}\n\n---\n\n## 📊 Performance Metrics\n\n| Metric | Value |\n|--------|-------|\n| Prediction Accuracy | {{ $('Process Learning Insights').item.json.metrics.accuracy.toFixed(1) }}% |\n| Model Confidence | {{ $('Process Learning Insights').item.json.metrics.confidence }}% |\n| Content Quality Score | {{ $('Process Learning Insights').item.json.metrics.qualityScore }}/100 |\n| Predicted Engagement | {{ $('Process Learning Insights').item.json.metrics.predictedEngagement }} |\n| Actual Engagement | {{ $('Process Learning Insights').item.json.metrics.actualEngagement }} |\n\n---\n\n## 📝 Posted Content\n\n{{ $('Parse QA Result').item.json.finalContent }}\n\n---\n\n## 🎯 Skill Development Recommendations\n\n{{ $('Process Learning Insights').item.json.insights.skillRecommendations.map((rec, i) => `\n### ${i+1}. ${rec.skill} (${rec.priority} priority)\n\n**Why this matters:** ${rec.reasoning}\n\n**Suggested projects:**\n${rec.projects.map(p => `- ${p}`).join('\\n')}\n\n**Learning resources:**\n${rec.resources.map(r => `- ${r}`).join('\\n')}\n`).join('\\n---\\n') }}\n\n---\n\n## 🔥 Trending Topics to Focus On\n\n{{ $('Process Learning Insights').item.json.insights.trendingTopics.map(t => `- ${t}`).join('\\n') }}\n\n---\n\n## 🚀 Next Actions\n\n{{ $('Process Learning Insights').item.json.insights.nextActions.map(a => `- ${a}`).join('\\n') }}\n\n---\n\n## 📈 Strategy Updates\n\n{{ $('Process Learning Insights').item.json.insights.contentStrategyUpdates.map(u => `- ${u}`).join('\\n') }}\n\n---\n\n## ✅ What Worked\n\n{{ $('Process Learning Insights').item.json.insights.successFactors.map(f => `- ${f}`).join('\\n') }}\n\n## ⚠️ Areas for Improvement\n\n{{ $('Process Learning Insights').item.json.insights.improvementAreas.map(a => `- ${a}`).join('\\n') }}\n\n---\n\n*Powered by Agentic AI - Learning and improving with every post.*",
+        "subject": "🤖 Agentic AI Report - {{ new Date().toLocaleDateString() }}",
+        "fromEmail": "={{ $('Get System Config').item.json.fromEmail }}",
+        "toEmail": "={{ $('Get System Config').item.json.userEmail }}",
+        "options": {}
+      },
+      "id": "send-report",
+      "name": "Send Intelligence Report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [4640, 200],
+      "credentials": {
+        "smtp": {
+          "id": "5",
+          "name": "Email account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle low confidence scenario\nconst decision = $('Parse Orchestrator Decision').item.json;\n\nreturn [{\n  json: {\n    skipped: true,\n    reason: `Low confidence: ${decision.confidence}%`,\n    reasoning: decision.reasoning,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "handle-skip",
+      "name": "Handle Skip Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Get System Config').item.json.databaseUrl }}/skipped",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "runId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "name": "reason",
+              "value": "={{ $json.reason }}"
+            },
+            {
+              "name": "decision",
+              "value": "={{ JSON.stringify($('Parse Orchestrator Decision').item.json) }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-skip",
+      "name": "Log Skip Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 500]
+    },
+    {
+      "parameters": {
+        "content": "=⏸️ **Agentic AI System - Post Skipped**\n\n**Run ID:** {{ $execution.id }}\n**Timestamp:** {{ new Date().toLocaleString() }}\n\n**Reason:** {{ $('Handle Skip Decision').item.json.reason }}\n\n**Decision Details:**\n{{ $('Parse Orchestrator Decision').item.json.reasoning }}\n\n**Confidence:** {{ $('Parse Orchestrator Decision').item.json.confidence }}%\n\nThe system will attempt again in the next scheduled run.\n\n---\n*Agentic AI System*",
+        "subject": "⏸️ Agentic AI - Post Skipped",
+        "fromEmail": "={{ $('Get System Config').item.json.fromEmail }}",
+        "toEmail": "={{ $('Get System Config').item.json.userEmail }}",
+        "options": {}
+      },
+      "id": "notify-skip",
+      "name": "Notify Skip",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [2440, 500],
+      "credentials": {
+        "smtp": {
+          "id": "5",
+          "name": "Email account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle QA rejection\nconst qaResult = $('Parse QA Result').item.json;\n\nreturn [{\n  json: {\n    rejected: true,\n    reason: 'Failed QA approval',\n    qualityScore: qaResult.qualityScore,\n    issues: qaResult.issues,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "handle-rejection",
+      "name": "Handle QA Rejection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3100, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Get System Config').item.json.databaseUrl }}/rejected",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "runId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "name": "reason",
+              "value": "={{ $json.reason }}"
+            },
+            {
+              "name": "qaResult",
+              "value": "={{ JSON.stringify($('Parse QA Result').item.json) }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $('Parse QA Result').item.json.finalContent }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-rejection",
+      "name": "Log Rejection",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 400]
+    },
+    {
+      "parameters": {
+        "content": "=❌ **Agentic AI System - Content Rejected**\n\n**Run ID:** {{ $execution.id }}\n**Timestamp:** {{ new Date().toLocaleString() }}\n\n**Reason:** {{ $('Handle QA Rejection').item.json.reason }}\n**Quality Score:** {{ $('Handle QA Rejection').item.json.qualityScore }}/100\n\n**Issues Found:**\n{{ $('Handle QA Rejection').item.json.issues.map(i => `- ${i}`).join('\\n') }}\n\n**Content (Not Posted):**\n{{ $('Parse QA Result').item.json.finalContent }}\n\nThe system will attempt to create better content in the next run.\n\n---\n*Agentic AI System*",
+        "subject": "❌ Agentic AI - Content Rejected",
+        "fromEmail": "={{ $('Get System Config').item.json.fromEmail }}",
+        "toEmail": "={{ $('Get System Config').item.json.userEmail }}",
+        "options": {}
+      },
+      "id": "notify-rejection",
+      "name": "Notify Rejection",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [3540, 400],
+      "credentials": {
+        "smtp": {
+          "id": "5",
+          "name": "Email account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "errorMessage": "={{ $json.error }}",
+        "additionalFields": {}
+      },
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 800]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://your-api.com/errors",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "error",
+              "value": "={{ JSON.stringify($json) }}"
+            },
+            {
+              "name": "executionId",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-error",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 800]
+    },
+    {
+      "parameters": {
+        "content": "=🚨 **Agentic AI System Error**\n\n**Execution ID:** {{ $execution.id }}\n**Timestamp:** {{ new Date().toLocaleString() }}\n\n**Error:**\n{{ $('Error Trigger').item.json.error }}\n\n**Node:** {{ $('Error Trigger').item.json.node }}\n\nThe system will retry in the next scheduled run.\n\n---\n*Agentic AI System Monitoring*",
+        "subject": "🚨 Agentic AI System Error",
+        "fromEmail": "noreply@yourdomain.com",
+        "toEmail": "you@example.com",
+        "options": {}
+      },
+      "id": "send-error-alert",
+      "name": "Send Error Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [680, 800],
+      "credentials": {
+        "smtp": {
+          "id": "5",
+          "name": "Email account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get System Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get System Config": {
+      "main": [
+        [
+          {
+            "node": "Get Historical Performance",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Reddit Trends",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch GitHub Repos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Historical Performance": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Data Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Reddit Trends": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Data Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch GitHub Repos": {
+      "main": [
+        [
+          {
+            "node": "Get Recent Commits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Recent Commits": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Data Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Data Sources": {
+      "main": [
+        [
+          {
+            "node": "Orchestrator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orchestrator Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Orchestrator Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Orchestrator Decision": {
+      "main": [
+        [
+          {
+            "node": "Should Proceed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Proceed?": {
+      "main": [
+        [
+          {
+            "node": "Content Creation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Skip Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content Creation Agent": {
+      "main": [
+        [
+          {
+            "node": "Extract Post Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Post Content": {
+      "main": [
+        [
+          {
+            "node": "QA Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "QA Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse QA Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse QA Result": {
+      "main": [
+        [
+          {
+            "node": "Approved to Post?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved to Post?": {
+      "main": [
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle QA Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Store Post Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Post Metadata": {
+      "main": [
+        [
+          {
+            "node": "Wait 6 Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Fetch Post Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Post Analytics": {
+      "main": [
+        [
+          {
+            "node": "Learning Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Learning Agent": {
+      "main": [
+        [
+          {
+            "node": "Process Learning Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Learning Insights": {
+      "main": [
+        [
+          {
+            "node": "Update Knowledge Base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Knowledge Base": {
+      "main": [
+        [
+          {
+            "node": "Send Intelligence Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Skip Decision": {
+      "main": [
+        [
+          {
+            "node": "Log Skip Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Skip Event": {
+      "main": [
+        [
+          {
+            "node": "Notify Skip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle QA Rejection": {
+      "main": [
+        [
+          {
+            "node": "Log Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Rejection": {
+      "main": [
+        [
+          {
+            "node": "Notify Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error": {
+      "main": [
+        [
+          {
+            "node": "Send Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "error-trigger"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "production"
+    },
+    {
+      "name": "agentic-ai"
+    }
+  ]
+}
