@@ -1,0 +1,606 @@
+{
+  "name": "🚀 ULTIMATE AI Job Hunter - Enterprise Edition",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "hours", "hoursInterval": 6}]
+        }
+      },
+      "id": "trigger-main",
+      "name": "⏰ Master Trigger - Every 6H",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "resume_text",
+              "value": "JOHN DOE | Senior Full-Stack Engineer\nemail@example.com | (555) 123-4567 | linkedin.com/in/johndoe\n\nEXPERIENCE:\nSenior Software Engineer @ TechCorp (2021-2024)\n- Built microservices handling 10M+ requests/day\n- Led team of 5 engineers, improved velocity 40%\n- React, Node.js, AWS, Kubernetes, PostgreSQL\n\nSKILLS: JavaScript, TypeScript, Python, React, Node.js, AWS, Docker, Kubernetes, PostgreSQL, MongoDB, Redis, GraphQL, CI/CD",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "target_roles",
+              "value": "=[\"Senior Software Engineer\",\"Staff Engineer\",\"Principal Engineer\",\"Tech Lead\"]",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "skills_primary",
+              "value": "=[\"JavaScript\",\"TypeScript\",\"React\",\"Node.js\",\"Python\",\"AWS\",\"Docker\",\"Kubernetes\",\"PostgreSQL\"]",
+              "type": "string"
+            },
+            {
+              "id": "c4",
+              "name": "your_name",
+              "value": "John Doe",
+              "type": "string"
+            },
+            {
+              "id": "c5",
+              "name": "your_email",
+              "value": "your.email@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "c6",
+              "name": "linkedin_url",
+              "value": "linkedin.com/in/johndoe",
+              "type": "string"
+            },
+            {
+              "id": "c7",
+              "name": "github_username",
+              "value": "johndoe",
+              "type": "string"
+            },
+            {
+              "id": "c8",
+              "name": "years_experience",
+              "value": "8",
+              "type": "number"
+            },
+            {
+              "id": "c9",
+              "name": "min_salary",
+              "value": "150000",
+              "type": "number"
+            },
+            {
+              "id": "c10",
+              "name": "target_salary",
+              "value": "180000",
+              "type": "number"
+            },
+            {
+              "id": "c11",
+              "name": "slack_webhook",
+              "value": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+              "type": "string"
+            },
+            {
+              "id": "c12",
+              "name": "google_drive_folder_id",
+              "value": "YOUR_DRIVE_FOLDER_ID",
+              "type": "string"
+            },
+            {
+              "id": "c13",
+              "name": "enable_auto_apply",
+              "value": "false",
+              "type": "boolean"
+            },
+            {
+              "id": "c14",
+              "name": "match_threshold",
+              "value": "80",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "config",
+      "name": "⚙️ Master Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [460, 500]
+    },
+    {
+      "parameters": {},
+      "id": "split-sources",
+      "name": "🔀 Split for Parallel Sources",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.adzuna.com/v1/api/jobs/us/search/1",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "app_id", "value": "YOUR_ADZUNA_APP_ID"},
+            {"name": "app_key", "value": "YOUR_ADZUNA_APP_KEY"},
+            {"name": "results_per_page", "value": "100"},
+            {"name": "what", "value": "senior software engineer"},
+            {"name": "max_days_old", "value": "1"}
+          ]
+        }
+      },
+      "id": "source-adzuna",
+      "name": "📡 Source: Adzuna",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://remotive.com/api/remote-jobs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "category", "value": "software-dev"},
+            {"name": "limit", "value": "50"}
+          ]
+        }
+      },
+      "id": "source-remotive",
+      "name": "📡 Source: Remotive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 450]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.arbeitnow.com/api/job-board-api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "search", "value": "software engineer"}
+          ]
+        }
+      },
+      "id": "source-arbeit",
+      "name": "📡 Source: Arbeitnow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 600]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://findwork.dev/api/jobs/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "search", "value": "senior engineer"}
+          ]
+        }
+      },
+      "id": "source-findwork",
+      "name": "📡 Source: FindWork",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 750]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize all job sources\nconst item = $input.first().json;\nlet jobs = [];\n\nif (item.results && Array.isArray(item.results)) {\n  jobs = item.results.map(job => ({\n    id: job.id || job.slug,\n    title: job.title || job.role,\n    company: job.company?.display_name || job.company_name || 'Unknown',\n    description: job.description || job.text || '',\n    location: job.location?.display_name || job.location || 'Remote',\n    url: job.redirect_url || job.url,\n    posted: job.created || job.date_posted || job.publication_date,\n    salary_min: job.salary_min,\n    salary_max: job.salary_max,\n    source: 'Multi'\n  }));\n} else if (item.jobs) {\n  jobs = item.jobs.map(job => ({\n    id: job.id,\n    title: job.title,\n    company: job.company_name,\n    description: job.description,\n    location: job.candidate_required_location || 'Remote',\n    url: job.url,\n    posted: job.publication_date,\n    source: 'Remotive'\n  }));\n} else if (item.data) {\n  jobs = item.data.map(job => ({\n    id: job.slug,\n    title: job.title,\n    company: job.company_name,\n    description: job.description,\n    location: job.location,\n    url: job.url,\n    posted: job.created_at,\n    source: 'Arbeit'\n  }));\n}\n\nconst today = new Date();\nconst oneDayAgo = new Date(today - 24*60*60*1000);\njobs = jobs.filter(j => new Date(j.posted) >= oneDayAgo);\n\nreturn jobs.map(j => ({json: j}));"
+      },
+      "id": "normalize",
+      "name": "🔄 Normalize Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deduplicate jobs\nconst jobs = $input.all();\nconst seen = new Set();\nconst unique = jobs.filter(item => {\n  const key = `${item.json.company}-${item.json.title}`.toLowerCase().substring(0,50);\n  if (seen.has(key)) return false;\n  seen.add(key);\n  return true;\n});\nconsole.log(`Deduped: ${jobs.length} → ${unique.length}`);\nreturn unique;"
+      },
+      "id": "dedup",
+      "name": "🗑️ Deduplicate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// AGENT 1: Initial Screening\nconst jobs = $input.all();\nconst config = $('⚙️ Master Config').first().json;\nconst targetRoles = JSON.parse(config.target_roles);\nconst minSalary = config.min_salary;\n\nconst screened = jobs.map(item => {\n  const job = item.json;\n  const text = (job.description + ' ' + job.title).toLowerCase();\n  \n  const roleMatch = targetRoles.some(r => text.includes(r.toLowerCase()));\n  const seniorMatch = ['senior','staff','principal','lead'].some(s => text.includes(s));\n  const h1bFriendly = !['citizen only','citizenship required','clearance'].some(k => text.includes(k));\n  const salaryOK = !job.salary_min || job.salary_min >= minSalary;\n  \n  let score = 0;\n  if (roleMatch) score += 30;\n  if (seniorMatch) score += 20;\n  if (h1bFriendly) score += 25;\n  if (salaryOK) score += 25;\n  \n  return {\n    json: {\n      ...job,\n      screening: {roleMatch, seniorMatch, h1bFriendly, salaryOK, score}\n    }\n  };\n});\n\nreturn screened.filter(j => j.json.screening.score >= 50);"
+      },
+      "id": "agent1-screen",
+      "name": "🤖 AGENT 1: Initial Screening",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// AGENT 2: Skills Analysis\nconst jobs = $input.all();\nconst skills = JSON.parse($('⚙️ Master Config').first().json.skills_primary);\n\nconst analyzed = jobs.map(item => {\n  const job = item.json;\n  const text = (job.description + ' ' + job.title).toLowerCase();\n  const matched = skills.filter(s => text.includes(s.toLowerCase()));\n  const score = Math.round((matched.length / skills.length) * 100);\n  \n  return {\n    json: {\n      ...job,\n      skillsAnalysis: {matched, missing: skills.filter(s => !matched.includes(s)), score}\n    }\n  };\n});\n\nreturn analyzed;"
+      },
+      "id": "agent2-skills",
+      "name": "🤖 AGENT 2: Skills Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=YOUR_GEMINI_API_KEY",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"You are an expert ATS analyzer and career coach.\\n\\nRESUME:\\n{{ $('⚙️ Master Config').first().json.resume_text }}\\n\\nJOB:\\nTitle: {{ $json.title }}\\nCompany: {{ $json.company }}\\nDescription: {{ $json.description.substring(0,800) }}\\n\\nANALYSIS:\\n- Screening Score: {{ $json.screening.score }}\\n- Skills Match: {{ $json.skillsAnalysis.score }}%\\n- Matched: {{ $json.skillsAnalysis.matched.join(', ') }}\\n- Missing: {{ $json.skillsAnalysis.missing.join(', ') }}\\n\\nProvide comprehensive analysis in JSON (no markdown):\\n{\\n  \\\"overallScore\\\": 85,\\n  \\\"atsScore\\\": 78,\\n  \\\"experienceMatch\\\": 90,\\n  \\\"culturalFit\\\": 75,\\n  \\\"interviewChance\\\": \\\"80%\\\",\\n  \\\"priority\\\": \\\"HIGH\\\",\\n  \\\"strengths\\\": [\\\"strength1\\\"],\\n  \\\"weaknesses\\\": [\\\"weakness1\\\"],\\n  \\\"interviewFocus\\\": [\\\"topic1\\\"],\\n  \\\"tailoringTips\\\": [\\\"tip1\\\"],\\n  \\\"redFlags\\\": [],\\n  \\\"salaryEstimate\\\": \\\"$180-220K\\\",\\n  \\\"recommendedAction\\\": \\\"Apply immediately\\\"\\n}\"\n    }]\n  }],\n  \"generationConfig\": {\"temperature\": 0.3, \"maxOutputTokens\": 1536}\n}"
+      },
+      "id": "agent3-gemini",
+      "name": "🤖 AGENT 3: Gemini Deep Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Gemini response\nconst items = $input.all();\nconst parsed = items.map((item, i) => {\n  try {\n    const prev = $('🤖 AGENT 2: Skills Analysis').all()[i].json;\n    const text = item.json.candidates[0].content.parts[0].text\n      .replace(/```json\\n?/g, '').replace(/```/g, '').trim();\n    const ai = JSON.parse(text);\n    const composite = Math.round(\n      (prev.screening.score * 0.2) + \n      (prev.skillsAnalysis.score * 0.3) + \n      (ai.atsScore * 0.25) + \n      (ai.experienceMatch * 0.25)\n    );\n    return {json: {...prev, aiAnalysis: ai, compositeScore: composite}};\n  } catch(e) {\n    const prev = $('🤖 AGENT 2: Skills Analysis').all()[i].json;\n    return {json: {...prev, compositeScore: prev.skillsAnalysis.score}};\n  }\n});\nreturn parsed;"
+      },
+      "id": "parse-ai",
+      "name": "📊 Parse AI Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2220, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter top matches\nconst jobs = $input.all();\nconst threshold = $('⚙️ Master Config').first().json.match_threshold;\nconst top = jobs.filter(j => j.json.compositeScore >= threshold);\nif (top.length === 0) return [{json: {noJobs: true}}];\nreturn top;"
+      },
+      "id": "filter-top",
+      "name": "✅ Filter Top Matches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2440, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hunter.io/v2/domain-search?domain={{ $json.company.toLowerCase().replace(/[^a-z0-9]/g, '') }}.com&api_key=YOUR_HUNTER_API_KEY"
+      },
+      "id": "hunter-email",
+      "name": "📧 Hunter.io Email Finder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/v1/mixed_people/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"},
+            {"name": "X-Api-Key", "value": "YOUR_APOLLO_API_KEY"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"q_organization_domains\": \"{{ $json.company.toLowerCase().replace(/[^a-z0-9]/g, '') }}.com\",\n  \"person_titles\": [\"Engineering Manager\", \"VP Engineering\", \"CTO\", \"Head of Engineering\"],\n  \"page\": 1,\n  \"per_page\": 5\n}"
+      },
+      "id": "apollo-contacts",
+      "name": "👥 Apollo.io Contact Finder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 450]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=YOUR_GEMINI_API_KEY",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"Research this company comprehensively.\\n\\nCOMPANY: {{ $json.company }}\\nJOB: {{ $json.title }}\\nLOCATION: {{ $json.location }}\\n\\nRESEARCH AREAS:\\n1. Company mission & values\\n2. Recent news & funding\\n3. Tech stack & engineering culture\\n4. Growth trajectory\\n5. Glassdoor insights (if known)\\n6. Interview process\\n7. Work-life balance indicators\\n8. Red flags\\n\\nProvide detailed JSON:\\n{\\n  \\\"companySize\\\": \\\"500-1000\\\",\\n  \\\"funding\\\": \\\"Series C, $100M\\\",\\n  \\\"techStack\\\": [\\\"React\\\", \\\"Node\\\"],\\n  \\\"culture\\\": \\\"Fast-paced startup\\\",\\n  \\\"wlbRating\\\": 4.2,\\n  \\\"glassdoorRating\\\": 4.5,\\n  \\\"recentNews\\\": [\\\"news1\\\"],\\n  \\\"interviewProcess\\\": \\\"4 rounds\\\",\\n  \\\"redFlags\\\": [],\\n  \\\"pros\\\": [\\\"pro1\\\"],\\n  \\\"cons\\\": [\\\"con1\\\"],\\n  \\\"recommendationScore\\\": 85\\n}\"\n    }]\n  }],\n  \"generationConfig\": {\"temperature\": 0.4, \"maxOutputTokens\": 2048}\n}"
+      },
+      "id": "company-research",
+      "name": "🔍 AGENT: Company Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 600]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.glassdoor.com/api/api.htm?v=1&format=json&t.p=YOUR_PARTNER_ID&t.k=YOUR_API_KEY&action=employers&q={{ $json.company }}"
+      },
+      "id": "glassdoor",
+      "name": "⭐ Glassdoor Ratings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 750]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition"
+      },
+      "id": "merge-research",
+      "name": "🔗 Merge Research Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2880, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enrich with all research data\nconst items = $input.all();\nconst enriched = items.map((item, i) => {\n  const job = item.json;\n  const hunter = $('📧 Hunter.io Email Finder').all()[i]?.json;\n  const apollo = $('👥 Apollo.io Contact Finder').all()[i]?.json;\n  const research = $('🔍 AGENT: Company Research').all()[i]?.json;\n  const glassdoor = $('⭐ Glassdoor Ratings').all()[i]?.json;\n  \n  // Extract emails\n  let recipientEmail = `hiring@${job.company.toLowerCase().replace(/[^a-z]/g, '')}.com`;\n  let recipientName = 'Hiring Manager';\n  \n  if (hunter?.data?.emails?.length > 0) {\n    const email = hunter.data.emails.find(e => \n      e.position?.toLowerCase().includes('engineering')\n    ) || hunter.data.emails[0];\n    recipientEmail = email.value;\n    recipientName = `${email.first_name} ${email.last_name}`;\n  }\n  \n  return {\n    json: {\n      ...job,\n      contact: {recipientEmail, recipientName},\n      companyData: research?.candidates?.[0]?.content?.parts?.[0]?.text || '{}',\n      glassdoorRating: glassdoor?.response?.employers?.[0]?.overallRating || 'N/A'\n    }\n  };\n});\nreturn enriched;"
+      },
+      "id": "enrich-data",
+      "name": "💎 Enrich Job Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3100, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=YOUR_GEMINI_API_KEY",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"Create a comprehensive interview preparation guide.\\n\\nJOB:\\nTitle: {{ $json.title }}\\nCompany: {{ $json.company }}\\nDescription: {{ $json.description.substring(0,600) }}\\n\\nCANDIDATE:\\n{{ $('⚙️ Master Config').first().json.resume_text.substring(0,400) }}\\n\\nCOMPANY RESEARCH:\\n{{ $json.companyData }}\\n\\nCREATE PREP GUIDE WITH:\\n1. Technical questions (10+)\\n2. Behavioral questions (STAR method)\\n3. System design topics\\n4. Company-specific questions to ask\\n5. Red flags to watch for\\n6. Salary negotiation talking points\\n\\nJSON format:\\n{\\n  \\\"technicalQuestions\\\": [\\\"q1\\\"],\\n  \\\"behavioralQuestions\\\": [\\\"q1\\\"],\\n  \\\"systemDesignTopics\\\": [\\\"topic1\\\"],\\n  \\\"questionsToAsk\\\": [\\\"q1\\\"],\\n  \\\"yourStrengths\\\": [\\\"s1\\\"],\\n  \\\"preparationTips\\\": [\\\"tip1\\\"],\\n  \\\"salaryNegotiation\\\": {\\\"targetRange\\\": \\\"$180-220K\\\", \\\"justification\\\": [\\\"point1\\\"]},\\n  \\\"estimatedDifficulty\\\": \\\"Medium\\\"\\n}\"\n    }]\n  }],\n  \"generationConfig\": {\"temperature\": 0.5, \"maxOutputTokens\": 3072}\n}"
+      },
+      "id": "interview-prep",
+      "name": "📚 AGENT: Interview Prep Generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=YOUR_GEMINI_API_KEY",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"Generate highly tailored resume for this job.\\n\\nORIGINAL RESUME:\\n{{ $('⚙️ Master Config').first().json.resume_text }}\\n\\nJOB:\\nTitle: {{ $json.title }}\\nCompany: {{ $json.company }}\\nDescription: {{ $json.description }}\\n\\nTAILORING INSIGHTS:\\n{{ $json.aiAnalysis?.tailoringTips?.join('; ') }}\\n\\nINSTRUCTIONS:\\n- Keep format & dates\\n- Integrate missing keywords naturally\\n- Emphasize relevant projects\\n- ATS-optimized\\n- 1-2 pages\\n- Truthful only\\n\\nProvide resume text only (no markdown).\"\n    }]\n  }],\n  \"generationConfig\": {\"temperature\": 0.4, \"maxOutputTokens\": 3072}\n}"
+      },
+      "id": "resume-gen",
+      "name": "📄 AGENT: Resume Generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=YOUR_GEMINI_API_KEY",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"Write compelling cold email.\\n\\nCANDIDATE:\\nName: {{ $('⚙️ Master Config').first().json.your_name }}\\nLinkedIn: {{ $('⚙️ Master Config').first().json.linkedin_url }}\\nGitHub: github.com/{{ $('⚙️ Master Config').first().json.github_username }}\\n\\nJOB:\\nCompany: {{ $json.company }}\\nRole: {{ $json.title }}\\n\\nRECIPIENT:\\n{{ $json.contact.recipientName }}\\n\\nCOMPANY INSIGHTS:\\n{{ $json.companyData }}\\n\\nGUIDELINES:\\n- Subject: <60 chars, personalized\\n- 150-200 words\\n- Reference company specifically\\n- 2-3 achievements\\n- Not desperate\\n- Request 15min chat\\n\\nJSON:\\n{\\n  \\\"subject\\\": \\\"subject\\\",\\n  \\\"body\\\": \\\"email body\\\"\\n}\"\n    }]\n  }],\n  \"generationConfig\": {\"temperature\": 0.7, \"maxOutputTokens\": 1024}\n}"
+      },
+      "id": "cold-email-gen",
+      "name": "✉️ AGENT: Cold Email Generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 700]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition"
+      },
+      "id": "merge-generated",
+      "name": "🔗 Merge Generated Content",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [3540, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse all generated content\nconst items = $input.all();\nconst parsed = items.map((item, i) => {\n  const job = item.json;\n  \n  // Parse interview prep\n  let interviewPrep = {};\n  try {\n    const prep = $('📚 AGENT: Interview Prep Generator').all()[i].json.candidates[0].content.parts[0].text;\n    interviewPrep = JSON.parse(prep.replace(/```json/g,'').replace(/```/g,'').trim());\n  } catch(e) {}\n  \n  // Parse resume\n  let tailoredResume = 'Error';\n  try {\n    tailoredResume = $('📄 AGENT: Resume Generator').all()[i].json.candidates[0].content.parts[0].text.trim();\n  } catch(e) {}\n  \n  // Parse cold email\n  let coldEmail = {subject: 'Error', body: 'Error'};\n  try {\n    const email = $('✉️ AGENT: Cold Email Generator').all()[i].json.candidates[0].content.parts[0].text;\n    coldEmail = JSON.parse(email.replace(/```json/g,'').replace(/```/g,'').trim());\n  } catch(e) {}\n  \n  return {\n    json: {\n      ...job,\n      interviewPrep,\n      tailoredResume,\n      coldEmail,\n      generatedAt: new Date().toISOString()\n    }\n  };\n});\nreturn parsed;"
+      },
+      "id": "parse-generated",
+      "name": "📊 Parse Generated Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3760, 500]
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {"fieldName": "compositeScore", "order": "descending"}
+          ]
+        }
+      },
+      "id": "sort-final",
+      "name": "🔢 Sort by Score",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [3980, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Save resume to Google Drive (simulated - requires MCP)\nconst jobs = $input.all();\nconst config = $('⚙️ Master Config').first().json;\n\n// In production, use Google Drive MCP or API\nconst saved = jobs.map(item => {\n  const job = item.json;\n  const fileName = `Resume_${job.company}_${Date.now()}.txt`;\n  \n  // PLACEHOLDER: Replace with actual Drive API call\n  const driveFileId = `DRIVE_${Date.now()}`;\n  const driveUrl = `https://drive.google.com/file/d/${driveFileId}`;\n  \n  return {\n    json: {\n      ...job,\n      resumeStorage: {\n        fileName,\n        driveFileId,\n        driveUrl,\n        savedAt: new Date().toISOString()\n      }\n    }\n  };\n});\n\nreturn saved;"
+      },
+      "id": "save-drive",
+      "name": "💾 Save to Google Drive",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Job Tracker",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        }
+      },
+      "id": "save-sheets-main",
+      "name": "📊 Save to Job Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [4200, 500]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Interview Prep",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData"
+        }
+      },
+      "id": "save-sheets-interview",
+      "name": "📚 Save Interview Prep",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [4200, 700]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('⚙️ Master Config').first().json.your_email }}",
+        "toEmail": "={{ $json.contact.recipientEmail }}",
+        "subject": "={{ $json.coldEmail.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.coldEmail.body }}"
+      },
+      "id": "send-cold-email",
+      "name": "📧 Send Cold Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [4420, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('⚙️ Master Config').first().json.slack_webhook }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"🎯 New Job Match Found!\",\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\"type\": \"plain_text\", \"text\": \"{{ $json.title }} @ {{ $json.company }}\"}\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        {\"type\": \"mrkdwn\", \"text\": \"*Score:* {{ $json.compositeScore }}%\"},\n        {\"type\": \"mrkdwn\", \"text\": \"*Priority:* {{ $json.aiAnalysis?.priority }}\"},\n        {\"type\": \"mrkdwn\", \"text\": \"*Location:* {{ $json.location }}\"},\n        {\"type\": \"mrkdwn\", \"text\": \"*Salary:* {{ $json.aiAnalysis?.salaryEstimate }}\"}\n      ]\n    },\n    {\n      \"type\": \"section\",\n      \"text\": {\"type\": \"mrkdwn\", \"text\": \"*Strengths:* {{ $json.aiAnalysis?.strengths?.join(', ') }}\"}\n    },\n    {\n      \"type\": \"actions\",\n      \"elements\": [\n        {\"type\": \"button\", \"text\": {\"type\": \"plain_text\", \"text\": \"View Job\"}, \"url\": \"{{ $json.url }}\"},\n        {\"type\": \"button\", \"text\": {\"type\": \"plain_text\", \"text\": \"Resume\"}, \"url\": \"{{ $json.resumeStorage?.driveUrl }}\"}\n      ]\n    }\n  ]\n}"
+      },
+      "id": "notify-slack",
+      "name": "💬 Slack Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4640, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analytics summary\nconst jobs = $input.all();\nconst summary = {\n  totalProcessed: jobs.length,\n  avgScore: Math.round(jobs.reduce((s,j) => s + j.json.compositeScore, 0) / jobs.length),\n  highPriority: jobs.filter(j => j.json.aiAnalysis?.priority === 'HIGH').length,\n  emailsSent: jobs.filter(j => j.json.coldEmail?.subject).length,\n  topCompanies: jobs.slice(0,5).map(j => j.json.company),\n  timestamp: new Date().toLocaleString()\n};\n\nreturn [{json: summary}];"
+      },
+      "id": "analytics",
+      "name": "📈 Generate Analytics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4860, 500]
+    }
+  ],
+  "connections": {
+    "⏰ Master Trigger - Every 6H": {"main": [[{"node": "⚙️ Master Config"}]]},
+    "⚙️ Master Config": {"main": [[{"node": "🔀 Split for Parallel Sources"}]]},
+    "🔀 Split for Parallel Sources": {"main": [[
+      {"node": "📡 Source: Adzuna"},
+      {"node": "📡 Source: Remotive"},
+      {"node": "📡 Source: Arbeitnow"},
+      {"node": "📡 Source: FindWork"}
+    ]]},
+    "📡 Source: Adzuna": {"main": [[{"node": "🔄 Normalize Data"}]]},
+    "📡 Source: Remotive": {"main": [[{"node": "🔄 Normalize Data"}]]},
+    "📡 Source: Arbeitnow": {"main": [[{"node": "🔄 Normalize Data"}]]},
+    "📡 Source: FindWork": {"main": [[{"node": "🔄 Normalize Data"}]]},
+    "🔄 Normalize Data": {"main": [[{"node": "🗑️ Deduplicate"}]]},
+    "🗑️ Deduplicate": {"main": [[{"node": "🤖 AGENT 1: Initial Screening"}]]},
+    "🤖 AGENT 1: Initial Screening": {"main": [[{"node": "🤖 AGENT 2: Skills Analysis"}]]},
+    "🤖 AGENT 2: Skills Analysis": {"main": [[{"node": "🤖 AGENT 3: Gemini Deep Analysis"}]]},
+    "🤖 AGENT 3: Gemini Deep Analysis": {"main": [[{"node": "📊 Parse AI Analysis"}]]},
+    "📊 Parse AI Analysis": {"main": [[{"node": "✅ Filter Top Matches"}]]},
+    "✅ Filter Top Matches": {"main": [[
+      {"node": "📧 Hunter.io Email Finder"},
+      {"node": "👥 Apollo.io Contact Finder"},
+      {"node": "🔍 AGENT: Company Research"},
+      {"node": "⭐ Glassdoor Ratings"}
+    ]]},
+    "📧 Hunter.io Email Finder": {"main": [[{"node": "🔗 Merge Research Data"}]]},
+    "👥 Apollo.io Contact Finder": {"main": [[{"node": "🔗 Merge Research Data"}]]},
+    "🔍 AGENT: Company Research": {"main": [[{"node": "🔗 Merge Research Data"}]]},
+    "⭐ Glassdoor Ratings": {"main": [[{"node": "🔗 Merge Research Data"}]]},
+    "🔗 Merge Research Data": {"main": [[{"node": "💎 Enrich Job Data"}]]},
+    "💎 Enrich Job Data": {"main": [[
+      {"node": "📚 AGENT: Interview Prep Generator"},
+      {"node": "📄 AGENT: Resume Generator"},
+      {"node": "✉️ AGENT: Cold Email Generator"}
+    ]]},
+    "📚 AGENT: Interview Prep Generator": {"main": [[{"node": "🔗 Merge Generated Content"}]]},
+    "📄 AGENT: Resume Generator": {"main": [[{"node": "🔗 Merge Generated Content"}]]},
+    "✉️ AGENT: Cold Email Generator": {"main": [[{"node": "🔗 Merge Generated Content"}]]},
+    "🔗 Merge Generated Content": {"main": [[{"node": "📊 Parse Generated Content"}]]},
+    "📊 Parse Generated Content": {"main": [[{"node": "🔢 Sort by Score"}]]},
+    "🔢 Sort by Score": {"main": [[
+      {"node": "💾 Save to Google Drive"},
+      {"node": "📊 Save to Job Tracker"},
+      {"node": "📚 Save Interview Prep"}
+    ]]},
+    "💾 Save to Google Drive": {"main": [[{"node": "📧 Send Cold Email"}]]},
+    "📊 Save to Job Tracker": {"main": [[{"node": "📧 Send Cold Email"}]]},
+    "📚 Save Interview Prep": {"main": [[{"node": "📧 Send Cold Email"}]]},
+    "📧 Send Cold Email": {"main": [[{"node": "💬 Slack Notification"}]]},
+    "💬 Slack Notification": {"main": [[{"node": "📈 Generate Analytics"}]]}
+  },
+  "pinData": {},
+  "settings": {"executionOrder": "v1"},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-11-16T00:00:00.000Z",
+  "versionId": "4"
+}
