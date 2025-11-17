@@ -11,6 +11,7 @@
 [Features](#-features) • [Quick Start](#-quick-start) • [Setup](#%EF%B8%8F-setup-guide) • [Architecture](#-architecture) • [FAQ](#-faq)
 
 </div>
+<img width="1489" height="479" alt="image" src="https://github.com/user-attachments/assets/feeccdb3-05da-4fb4-a9f7-1f6cd699f624" />
 
 
 ## 🎯 Overview
