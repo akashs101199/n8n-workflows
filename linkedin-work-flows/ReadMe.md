@@ -12,6 +12,8 @@
 [Features](#-features) • [Architecture](#-architecture) • [Installation](#-installation) • [Configuration](#-configuration) • [Usage](#-usage) • [Roadmap](#-roadmap)
 
 </div>
+<img width="1171" height="321" alt="image" src="https://github.com/user-attachments/assets/cab412dd-707f-4b20-9894-15b9a64a925b" />
+
 
 ---
 
